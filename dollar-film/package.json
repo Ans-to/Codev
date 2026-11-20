@@ -1,0 +1,15 @@
+{
+  "name": "dollar-world-currency-film",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "stills": "node render.mjs --stills=1,7,12,17,22,27 --n=2",
+    "preview": "node render.mjs --video --fps=24 --n=2 --audio=sound/mix.wav --out=out/preview.mp4",
+    "final": "node render.mjs --video --fps=24 --n=2 --audio=sound/mix.wav --out=why-the-dollar-is-the-world-currency.mp4"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^153.0.0",
+    "puppeteer": "25.12.0",
+    "three": "0.185.1"
+  }
+}

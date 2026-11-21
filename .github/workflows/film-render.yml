@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        time: ['1', '6', '11', '16', '21', '27']
+        time: ['1']
     defaults:
       run:
         working-directory: dollar-film-v2
@@ -29,7 +29,15 @@ jobs:
         env:
           PUPPETEER_SKIP_DOWNLOAD: '1'
       - name: Render still using the full kit
-        run: node render.mjs --stills=${{ matrix.time }} --n=16 --out=stills
+        run: |
+          set +e
+          node render.mjs --stills=${{ matrix.time }} --n=1 --out=stills > /tmp/render.log 2>&1
+          result=$?
+          cat /tmp/render.log
+          if [ "$result" -ne 0 ]; then
+            while IFS= read -r line; do echo "::error::$line"; done < <(tail -20 /tmp/render.log)
+            exit "$result"
+          fi
         env:
           CHROME_PATH: /usr/bin/google-chrome
       - uses: actions/upload-artifact@v4

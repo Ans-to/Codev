@@ -62,7 +62,8 @@ function drawScreen(t){let shot=shotAt(t),local=t-cuts[shot];sc.fillStyle='#0b20
 sc.fillStyle='#c89d58';sc.fillRect(60,65,64,5);sc.font='bold 25px Arial';sc.letterSpacing='3px';sc.fillText('THE GLOBAL MONEY STORY',145,72);sc.letterSpacing='0px';
 sc.fillStyle='#f0e8d6';sc.font='bold 81px Arial';sc.fillText(titles[shot][0],60,218);sc.fillStyle='#cfa969';sc.font='bold 34px Arial';sc.fillText(titles[shot][1],62,275);
 sc.strokeStyle='rgba(201,168,105,.35)';sc.lineWidth=2;sc.beginPath();sc.moveTo(60,312);sc.lineTo(956,312);sc.stroke();
-sc.font='27px Arial';sc.fillStyle='#a8bec0';let copy=[['HISTORY  •  TRADE  •  TRUST'],['A DOLLAR-CENTERED SYSTEM'],['PRICED AND SETTLED WORLDWIDE'],['A HOME FOR CENTRAL BANK RESERVES'],['THE POWER OF SHARED USE'],['A ROLE THAT CAN CHANGE']][shot];sc.fillText(copy,62,373);
+if(shot===3){sc.strokeStyle='rgba(205,172,107,.65)';sc.lineWidth=5;sc.beginPath();let points=[[610,462],[675,434],[735,445],[800,396],[860,410],[930,360]];for(let i=0;i<points.length;i++){let [x,y]=points[i];i?sc.lineTo(x,y):sc.moveTo(x,y)}sc.stroke();for(let [x,y] of points){sc.beginPath();sc.arc(x,y,5,0,Math.PI*2);sc.fillStyle='#edd194';sc.fill();}}
+sc.font='27px Arial';sc.fillStyle='#a8bec0';let copy=[['HISTORY  •  TRADE  •  TRUST'],['A DOLLAR-CENTERED SYSTEM'],['OFTEN PRICED IN DOLLARS'],['A HOME FOR CENTRAL BANK RESERVES'],['THE POWER OF SHARED USE'],['A ROLE THAT CAN CHANGE']][shot];sc.fillText(copy,62,373);
 sc.fillStyle='#7b9a9b';sc.font='21px Arial';sc.fillText('WORLD CURRENCY  /  '+String(shot+1).padStart(2,'0'),62,520);sc.fillStyle='rgba(186,210,203,.12)';sc.fillRect(62,550,900,3);sc.fillStyle='#d3b16e';sc.fillRect(62,550,900*clamp(t/30),3);screenTex.needsUpdate=true;}
 // Coin with embossed face; base supports it as a physical object.
 const coin=new THREE.Group();coin.position.set(-.02,.119,.22);coin.name='coin';scene.add(coin);
@@ -80,6 +81,9 @@ const bar=add(box(.11,.035,.055,.008),bright,.08,.028,.035,agreement);bar.rotati
 const stack=new THREE.Group();stack.position.set(.08,0,.29);scene.add(stack);for(let i=0;i<4;i++){const sheet=add(box(.30,.008,.19,.002),paper,0,.005+i*.01,0,stack);sheet.rotation.y=(i-1.5)*.04}
 // Route lights and banking markers. All additions animate independently and deterministically.
 const markers=[];for(let i=0;i<3;i++){const mesh=add(new THREE.SphereGeometry(.015,16,12),new THREE.MeshBasicMaterial({color:new THREE.Color(2.2,1.55,.55)}),0,0,0,globe);markers.push(mesh)}
+// Trade arcs are revealed separately, in sync with their own chimes.
+const routes=[];for(let i=0;i<3;i++){const a=i*2.05,b=a+.95;const start=V(Math.cos(a)*.16,.29+Math.sin(a)*.11,.15),end=V(Math.cos(b)*.16,.29+Math.sin(b)*.11,.15);const mid=start.clone().add(end).multiplyScalar(.5);mid.z+=.09;const pts=new THREE.QuadraticBezierCurve3(start,mid,end).getPoints(48);const geo=new THREE.BufferGeometry().setFromPoints(pts);const line=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xf5cc77}));globe.add(line);routes.push(line)}
+const links=[];for(let i=0;i<3;i++){let x=-.06+i*.12;let curve=new THREE.QuadraticBezierCurve3(V(x,.018,.38),V(x*.5,.026,.29),V(-.02,.022,.23));let line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(32)),new THREE.LineBasicMaterial({color:0xe3bd72}));scene.add(line);links.push(line)}
 const nodes=[];for(let i=0;i<3;i++){const g=new THREE.Group();g.position.set(-.06+i*.12,.018,.38);scene.add(g);add(new THREE.CylinderGeometry(.035,.035,.014,28),gold,0,0,0,g);add(new THREE.CylinderGeometry(.025,.025,.002,28),bright,0,.009,0,g);nodes.push(g)}
 // Shadow-casting slats paint light shapes on the rear wall.
 const SUN_POS=V(-3.2,2.3,1.4),SUN_AT=V(0,.25,-.6);const blinds=new THREE.Group();blinds.position.copy(SUN_AT).lerp(SUN_POS,.48);blinds.lookAt(SUN_AT);scene.add(blinds);
@@ -98,7 +102,7 @@ function jitterLights(k,n){let s=n>1?.15:0;sun.position.set(SUN_POS.x+(halton(k+
 function pop(t,start){return Math.max(.001,backOut(seg(t,start,start+.3)))}
 function pose(t){earth.rotation.y=.3+t*.07;let k=pop(t,0);coin.scale.set(k, k, k);coin.position.y=.119+Math.max(0,1-seg(t,0,.3))*.14;coin.rotation.z=.08*spring(t,.3,5,7);
 agreement.visible=t>=3.65&&t<8.6;if(agreement.visible)agreement.scale.setScalar(pop(t,3.65));stack.visible=t>=13.55&&t<18.84;if(stack.visible)stack.scale.setScalar(pop(t,13.55));
-markers.forEach((m,i)=>{let at=8.9+i*.45;m.visible=t>=at&&t<13.55;let a=i*1.9+t*.08;m.position.set(Math.cos(a)*.18,.29+Math.sin(a)*.13,.12+Math.sin(a)*.07);m.scale.setScalar(pop(t,at));});nodes.forEach((n,i)=>{let at=19.2+i*.45;n.visible=t>=at&&t<23.5;n.scale.setScalar(pop(t,at));});
+markers.forEach((m,i)=>{let at=8.9+i*.45;m.visible=t>=at&&t<13.55;let a=i*2.05+.95;m.position.set(Math.cos(a)*.16,.29+Math.sin(a)*.11,.15);m.scale.setScalar(pop(t,at));routes[i].visible=m.visible;routes[i].geometry.setDrawRange(0,Math.round(49*easeOut(seg(t,at,at+.4))));});nodes.forEach((n,i)=>{let at=19.2+i*.45;n.visible=t>=at&&t<23.5;n.scale.setScalar(pop(t,at));links[i].visible=n.visible;links[i].geometry.setDrawRange(0,Math.round(33*easeOut(seg(t,at,at+.4))));});
 for(let i=0;i<DUST;i++){let a=hash(i)*6.28,s=.15+.2*hash(i+99);dustPos[i*3]=-.9+1.8*hash(i+1)+.03*Math.sin(t*s+a);let dir=hash(i+5)<.33?-1:1;dustPos[i*3+1]=.04+1.1*hash(i+2)+((dir*t*.024*(.5+hash(i+3)))%.4);dustPos[i*3+2]=-.85+1.2*hash(i+4)+.03*Math.cos(t*s*.8+a);}dustGeo.attributes.position.needsUpdate=true;}
 const captions=await (await fetch('./captions.json')).json();
 const capCanvas=Object.assign(document.createElement('canvas'),{width:W,height:H}),cg=capCanvas.getContext('2d');const capTex=new THREE.CanvasTexture(capCanvas);capTex.colorSpace=THREE.SRGBColorSpace;

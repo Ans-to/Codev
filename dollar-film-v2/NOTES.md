@@ -6,3 +6,4 @@
 - Adapted the bundled starter's HDR accumulation, 38° Bezier camera, lens disc, 180° shutter, jittered shadow lights, bloom and one grade. Target: 16 samples for stills, 4 for preview and 48 for final.
 - Original synthesized score and timed effects; the kit mixer measured −14.1 LUFS and −1.5 dBTP. A physical phone-speaker check remains for the user.
 - Early shot timings were adjusted slightly to match the recorded narration, not vice versa.
+- After reviewing the first 16-sample stills, added visible trade-route arcs, network links and a market graph, and qualified the trade screen wording. These changes are being rechecked before the preview.

@@ -106,7 +106,7 @@ markers.forEach((m,i)=>{let at=8.9+i*.45;m.visible=t>=at&&t<13.55;let a=i*2.05+.
 for(let i=0;i<DUST;i++){let a=hash(i)*6.28,s=.15+.2*hash(i+99);dustPos[i*3]=-.9+1.8*hash(i+1)+.03*Math.sin(t*s+a);let dir=hash(i+5)<.33?-1:1;dustPos[i*3+1]=.04+1.1*hash(i+2)+((dir*t*.024*(.5+hash(i+3)))%.4);dustPos[i*3+2]=-.85+1.2*hash(i+4)+.03*Math.cos(t*s*.8+a);}dustGeo.attributes.position.needsUpdate=true;}
 const captions=await (await fetch('./captions.json')).json();
 const capCanvas=Object.assign(document.createElement('canvas'),{width:W,height:H}),cg=capCanvas.getContext('2d');const capTex=new THREE.CanvasTexture(capCanvas);capTex.colorSpace=THREE.SRGBColorSpace;
-function drawCaption(t){cg.clearRect(0,0,W,H);let item=captions.find((x,i)=>t>=x.start-.033&&t<(captions[i+1]?.start-.033??x.end)&&t<x.end);if(!item){capTex.needsUpdate=true;return}
+function drawCaption(t){cg.clearRect(0,0,W,H);let item=captions.find((x,i)=>t>=x.start-.033&&t<(captions[i+1] ? captions[i+1].start-.033 : x.end)&&t<x.end);if(!item){capTex.needsUpdate=true;return}
 cg.font='bold 58px Arial';cg.textBaseline='middle';const text=item.words.map(w=>w.text.toUpperCase()).join(' '),width=cg.measureText(text).width;let x=(W-width)/2;cg.fillStyle='rgba(3,12,17,.72)';cg.beginPath();cg.roundRect(x-35,850,width+70,92,14);cg.fill();for(const w of item.words){let word=w.text.toUpperCase();cg.fillStyle=t>=w.start-.033?'#f7e9cb':'#91a5a3';cg.fillText(word,x,896);x+=cg.measureText(word+' ').width;}capTex.needsUpdate=true;}
 // ---------- post: add the sub-frames, bloom, then ONE grade (lens fringe, ACES, vignette, sRGB, grain, captions) ----------
 const vert = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';

@@ -5,6 +5,7 @@ on:
       - 'arena/f1f081b8-codev'
 permissions:
   contents: write
+  actions: read
 jobs:
   stills:
     if: contains(github.event.head_commit.message, '[film-stills]')
@@ -210,4 +211,74 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add ../.film-review/preview.mp4
           git diff --cached --quiet || git commit -m 'Add narrated film timing preview'
+          git push origin HEAD:${{ github.ref_name }}
+
+  preview-patch:
+    if: contains(github.event.head_commit.message, '[film-patch]')
+    name: Fix ending and rebuild narrated preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: dollar-film-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: dollar-film-v2/package-lock.json
+      - run: npm ci --ignore-scripts
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: '1'
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 44861679332
+          pattern: preview-segment-*
+          path: dollar-film-v2/out/segments
+          merge-multiple: true
+      - name: Install FFmpeg if needed
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+      - name: Re-render affected two-second segment and ending still
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: |
+          set +e
+          node render.mjs --video --from=26 --to=28 --fps=30 --n=4 --out=out/segments/seg-13.mp4 > /tmp/render.log 2>&1
+          result=$?
+          node render.mjs --stills=27 --n=16 --out=stills >> /tmp/render.log 2>&1 || result=1
+          cat /tmp/render.log
+          grep -E 'Shader Error|\[pageerror\]|\[missing\]|\[page\] error' /tmp/render.log && result=1
+          grep -E 'GPU:|video ->|still ->' /tmp/render.log | while IFS= read -r line; do echo "::notice::$line"; done
+          if [ "$result" -ne 0 ]; then
+            while IFS= read -r line; do echo "::error::$line"; done < <(tail -15 /tmp/render.log)
+            exit "$result"
+          fi
+      - name: Mix and assemble compact review copy
+        run: |
+          python3 prepare_audio.py
+          test "$(find out/segments -name 'seg-*.mp4' | wc -l)" -eq 15
+          for f in out/segments/seg-*.mp4; do printf "file '%s/%s'\n" "$PWD" "$f"; done > out/concat.txt
+          ffmpeg -y -v error -f concat -safe 0 -i out/concat.txt -i sound/mix.wav -map 0:v:0 -map 1:a:0 -c:v libx264 -preset veryfast -crf 23 -maxrate 10M -bufsize 20M -pix_fmt yuv420p -c:a aac -b:a 256k -t 30 -movflags +faststart ../.film-review/preview.mp4
+          cp stills/t027.000.png ../.film-review/t027.000.png
+          frames=$(ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of default=nw=1:nk=1 ../.film-review/preview.mp4)
+          if [ "$frames" != 900 ]; then echo "::error::Expected 900 frames, got $frames"; exit 1; fi
+          ffprobe -v error -show_entries format=duration:stream=codec_name,width,height,r_frame_rate,duration -of json ../.film-review/preview.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dollar-film-preview-corrected
+          path: .film-review/preview.mp4
+          if-no-files-found: error
+          retention-days: 7
+      - name: Publish corrected preview on the same branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ../.film-review/preview.mp4 ../.film-review/t027.000.png
+          git diff --cached --quiet || git commit -m 'Publish corrected narrated preview'
           git push origin HEAD:${{ github.ref_name }}

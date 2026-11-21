@@ -42,6 +42,6 @@ for i,at in enumerate(starts):
 filters.append(''.join(streams)+f'amix=inputs={len(streams)}:normalize=0:duration=longest,atrim=0:30[v]')
 subprocess.run(['ffmpeg','-y','-v','error',*inputs,'-filter_complex',';'.join(filters),'-map','[v]','-c:a','pcm_s16le','sound/voice.wav'],check=True)
 sfx=[('coin.wav',.18,'coin lands'),('paper.wav',3.72,'agreement enters'),('coin.wav',5.2,'gold bar settles'),('chime.wav',8.9,'trade route one'),('chime.wav',9.35,'trade route two'),('chime.wav',9.8,'trade route three'),('paper.wav',13.8,'treasury papers settle'),('click.wav',14.4,'screen switches to market'),('click.wav',15.1,'chart activates'),('chime.wav',19.2,'first network marker'),('chime.wav',19.65,'second network marker'),('chime.wav',20.1,'third network marker'),('whoosh.wav',23.55,'closing camera move')]
-cfg={'length':30,'target_lufs':-14,'voice':{'file':'sound/voice.wav','at':0,'gain_db':0},'music':{'file':'sound/music.wav','gain_db':-15,'duck':True,'fade_out':1.2},'sfx':[{'file':'sound/sfx/'+p,'at':at,'gain_db':-11,'why':why} for p,at,why in sfx]}
+cfg={'length':30,'target_lufs':-14,'voice':{'file':'sound/voice.wav','at':0,'gain_db':0},'music':{'file':'sound/music.wav','gain_db':-7,'duck':True,'fade_out':1.2},'sfx':[{'file':'sound/sfx/'+p,'at':at,'gain_db':-11,'why':why} for p,at,why in sfx]}
 with open('sound/cues.json','w') as f:json.dump(cfg,f,indent=2)
 subprocess.run(['python3','mix.py','sound/cues.json','sound/mix.wav'],check=True)

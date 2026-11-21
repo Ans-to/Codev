@@ -7,3 +7,5 @@
 - Original synthesized score and timed effects; the kit mixer measured −14.1 LUFS and −1.5 dBTP. A physical phone-speaker check remains for the user.
 - Early shot timings were adjusted slightly to match the recorded narration, not vice versa.
 - After reviewing the first 16-sample stills, added visible trade-route arcs, network links and a market graph, and qualified the trade screen wording. These changes are being rechecked before the preview.
+- Corrected a final-caption boundary bug detected while preparing the preview: the final “FOREVER” caption must remain visible through its measured end time. Only the affected time range needs a preview re-render.
+- The 4-sample benchmark took 101 seconds for 30 frames (about 51 runner-minutes for 900 frames). The preview is split into 15 two-second chunks on GitHub Actions. The soundtrack bed was raised from −15 dB to −7 dB before ducking so its tail remains more audible on small speakers.

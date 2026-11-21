@@ -34,6 +34,8 @@ jobs:
           node render.mjs --stills=${{ matrix.time }} --n=16 --out=stills > /tmp/render.log 2>&1
           result=$?
           cat /tmp/render.log
+          grep -E "Shader Error|\[pageerror\]|\[missing\]|\[page\] error" /tmp/render.log && result=1
+          grep -E "GPU:|still ->" /tmp/render.log | while IFS= read -r line; do echo "::notice::$line"; done
           if [ "$result" -ne 0 ]; then
             while IFS= read -r line; do echo "::error::$line"; done < <(tail -20 /tmp/render.log)
             exit "$result"

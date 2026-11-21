@@ -21,7 +21,7 @@ await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const port = server.address().port;
 
 const angle = process.platform === 'darwin' ? ['--use-angle=metal'] : process.platform === 'win32' ? ['--use-angle=d3d11'] : [];
-const browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined,
+const browser = await puppeteer.launch({ headless: true, timeout: 120000, executablePath: process.env.CHROME_PATH || undefined,
   args: ['--no-sandbox', '--disable-setuid-sandbox', '--enable-unsafe-swiftshader', '--hide-scrollbars', '--force-color-profile=srgb', '--enable-gpu', '--ignore-gpu-blocklist', '--disable-gpu-vsync', '--run-all-compositor-stages-before-draw', ...angle] });
 const page = await browser.newPage();
 await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });

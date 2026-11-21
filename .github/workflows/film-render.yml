@@ -282,3 +282,147 @@ jobs:
           git add ../.film-review/preview.mp4 ../.film-review/t027.000.png
           git diff --cached --quiet || git commit -m 'Publish corrected narrated preview'
           git push origin HEAD:${{ github.ref_name }}
+
+  final-segments:
+    if: contains(github.event.head_commit.message, '[film-final]')
+    name: Final 48-sample segment ${{ matrix.segment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        segment: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    defaults:
+      run:
+        working-directory: dollar-film-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: dollar-film-v2/package-lock.json
+      - run: npm ci --ignore-scripts
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: '1'
+      - name: Install FFmpeg if needed
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+      - name: Render two seconds at 48 subframes
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          SEGMENT: ${{ matrix.segment }}
+        run: |
+          set +e
+          from=$((SEGMENT * 2))
+          to=$((from + 2))
+          printf -v name 'seg-%02d.mp4' "$SEGMENT"
+          node render.mjs --video --from="$from" --to="$to" --fps=30 --n=48 --crf=18 --out="out/$name" 2>&1 | tee /tmp/render.log
+          result=${PIPESTATUS[0]}
+          grep -E 'Shader Error|\[pageerror\]|\[missing\]|\[page\] error' /tmp/render.log && result=1
+          grep -E 'GPU:|video ->' /tmp/render.log | while IFS= read -r line; do echo "::notice::$line"; done
+          if [ "$result" -ne 0 ]; then
+            while IFS= read -r line; do echo "::error::$line"; done < <(tail -15 /tmp/render.log)
+            exit "$result"
+          fi
+          frames=$(ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of default=nw=1:nk=1 "out/$name")
+          if [ "$frames" != 60 ]; then echo "::error::Expected 60 frames, got $frames"; exit 1; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: final-segment-${{ matrix.segment }}
+          path: dollar-film-v2/out/seg-*.mp4
+          if-no-files-found: error
+          retention-days: 7
+
+  final-assemble:
+    if: contains(github.event.head_commit.message, '[film-final]')
+    name: Assemble and verify final video
+    needs: final-segments
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: dollar-film-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: dollar-film-v2/package-lock.json
+      - run: npm ci --ignore-scripts
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: '1'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: final-segment-*
+          path: dollar-film-v2/out/segments
+          merge-multiple: true
+      - name: Install FFmpeg if needed
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+      - name: Mix and assemble the 30-second master
+        run: |
+          python3 prepare_audio.py | tee out/mix-report.txt
+          test "$(find out/segments -name 'seg-*.mp4' | wc -l)" -eq 15
+          for f in out/segments/seg-*.mp4; do printf "file '%s/%s'\n" "$PWD" "$f"; done > out/concat.txt
+          ffmpeg -y -v error -f concat -safe 0 -i out/concat.txt -i sound/mix.wav -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 256k -t 30 -movflags +faststart why-dollar-world-currency-final.mp4
+          if [ "$(stat -c%s why-dollar-world-currency-final.mp4)" -gt 95000000 ]; then
+            echo '::notice::Master exceeds safe GitHub file size; encoding a high-quality delivery copy.'
+            ffmpeg -y -v error -i why-dollar-world-currency-final.mp4 -c:v libx264 -preset medium -crf 18 -maxrate 18M -bufsize 36M -c:a copy -movflags +faststart out/delivery.mp4
+            mv out/delivery.mp4 why-dollar-world-currency-final.mp4
+            test "$(stat -c%s why-dollar-world-currency-final.mp4)" -lt 100000000
+          fi
+      - name: Verify final video and deterministic seek
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: |
+          set -euo pipefail
+          f=why-dollar-world-currency-final.mp4
+          frames=$(ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of default=nw=1:nk=1 "$f")
+          test "$frames" = 900
+          ffprobe -v error -show_entries format=duration:stream=codec_name,width,height,r_frame_rate,duration -of json "$f" | tee out/probe.json
+          python3 - <<'PY'
+          import json
+          p=json.load(open('out/probe.json'))
+          assert abs(float(p['format']['duration'])-30.0) < .05, p
+          v=next(s for s in p['streams'] if s['codec_name']=='h264')
+          a=next(s for s in p['streams'] if s['codec_name']=='aac')
+          assert (v['width'],v['height'],v['r_frame_rate'])==(1920,1080,'30/1'), v
+          assert float(a['duration']) >= 29.9, a
+          PY
+          node render.mjs --stills=10 --n=48 --out=stills 2>&1 | tee out/seek-render.log
+          if grep -E 'Shader Error|\[pageerror\]|\[missing\]|\[page\] error' out/seek-render.log; then exit 1; fi
+          ffmpeg -y -v error -i "$f" -vf 'select=eq(n\,300)' -frames:v 1 -fps_mode passthrough out/video-frame.png
+          ffmpeg -hide_banner -i stills/t010.000.png -i out/video-frame.png -lavfi psnr -f null - 2>&1 | tee out/psnr.log
+          ffmpeg -hide_banner -nostats -i "$f" -vn -af ebur128=peak=true -f null - 2>&1 | tee out/loudness.log >/dev/null
+          {
+            echo 'Final QA: 900 frames, 1920x1080, 30 fps, 30 seconds, H.264/AAC.'
+            grep 'average:' out/psnr.log | tail -1
+            sed -n '/Summary:/,$p' out/loudness.log | tail -15
+            cat out/mix-report.txt
+          } | tee out/final-qa.txt
+          cp out/final-qa.txt ../.film-review/final-qa.txt
+          grep 'average:' out/psnr.log | tail -1 | while IFS= read -r line; do echo "::notice::$line"; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dollar-film-final
+          path: |
+            dollar-film-v2/why-dollar-world-currency-final.mp4
+            dollar-film-v2/out/final-qa.txt
+            dollar-film-v2/stills/t010.000.png
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish final video on the same branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add why-dollar-world-currency-final.mp4 ../.film-review/final-qa.txt
+          git diff --cached --quiet || git commit -m 'Publish 48-sample dollar film and quality report'
+          git push origin HEAD:${{ github.ref_name }}

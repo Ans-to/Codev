@@ -1,0 +1,8 @@
+node_modules/
+out/
+stills/
+sound/mix.wav
+sound/mix.wav.unlevelled.wav
+sound/music.wav
+sound/voice.wav
+sound/sfx/

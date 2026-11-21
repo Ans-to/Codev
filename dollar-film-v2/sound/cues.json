@@ -1,0 +1,95 @@
+{
+  "length": 30,
+  "target_lufs": -14,
+  "voice": {
+    "file": "sound/voice.wav",
+    "at": 0,
+    "gain_db": 0
+  },
+  "music": {
+    "file": "sound/music.wav",
+    "gain_db": -15,
+    "duck": true,
+    "fade_out": 1.2
+  },
+  "sfx": [
+    {
+      "file": "sound/sfx/coin.wav",
+      "at": 0.18,
+      "gain_db": -11,
+      "why": "coin lands"
+    },
+    {
+      "file": "sound/sfx/paper.wav",
+      "at": 3.72,
+      "gain_db": -11,
+      "why": "agreement enters"
+    },
+    {
+      "file": "sound/sfx/coin.wav",
+      "at": 5.2,
+      "gain_db": -11,
+      "why": "gold bar settles"
+    },
+    {
+      "file": "sound/sfx/chime.wav",
+      "at": 8.9,
+      "gain_db": -11,
+      "why": "trade route one"
+    },
+    {
+      "file": "sound/sfx/chime.wav",
+      "at": 9.35,
+      "gain_db": -11,
+      "why": "trade route two"
+    },
+    {
+      "file": "sound/sfx/chime.wav",
+      "at": 9.8,
+      "gain_db": -11,
+      "why": "trade route three"
+    },
+    {
+      "file": "sound/sfx/paper.wav",
+      "at": 13.8,
+      "gain_db": -11,
+      "why": "treasury papers settle"
+    },
+    {
+      "file": "sound/sfx/click.wav",
+      "at": 14.4,
+      "gain_db": -11,
+      "why": "screen switches to market"
+    },
+    {
+      "file": "sound/sfx/click.wav",
+      "at": 15.1,
+      "gain_db": -11,
+      "why": "chart activates"
+    },
+    {
+      "file": "sound/sfx/chime.wav",
+      "at": 19.2,
+      "gain_db": -11,
+      "why": "first network marker"
+    },
+    {
+      "file": "sound/sfx/chime.wav",
+      "at": 19.65,
+      "gain_db": -11,
+      "why": "second network marker"
+    },
+    {
+      "file": "sound/sfx/chime.wav",
+      "at": 20.1,
+      "gain_db": -11,
+      "why": "third network marker"
+    },
+    {
+      "file": "sound/sfx/whoosh.wav",
+      "at": 23.55,
+      "gain_db": -11,
+      "why": "closing camera move"
+    }
+  ]
+}

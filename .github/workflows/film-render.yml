@@ -3,9 +3,38 @@ on:
   push:
     branches:
       - 'arena/f1f081b8-codev'
+permissions:
+  contents: read
 jobs:
-  smoke:
-    if: contains(github.event.head_commit.message, '[film-smoke]')
+  stills:
+    if: contains(github.event.head_commit.message, '[film-stills]')
+    name: Still at ${{ matrix.time }} seconds
     runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        time: ['1', '6', '11', '16', '21', '27']
+    defaults:
+      run:
+        working-directory: dollar-film-v2
     steps:
-      - run: echo 'GitHub Actions rendering environment is available.'
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: dollar-film-v2/package-lock.json
+      - run: npm ci --ignore-scripts
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: '1'
+      - name: Render still using the full kit
+        run: node render.mjs --stills=${{ matrix.time }} --n=16 --out=stills
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dollar-still-${{ matrix.time }}
+          path: dollar-film-v2/stills/*.png
+          if-no-files-found: error
+          retention-days: 7

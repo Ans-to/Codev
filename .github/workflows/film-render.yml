@@ -67,3 +67,40 @@ jobs:
           git add .film-review
           git diff --cached --quiet || git commit -m 'Add rendered film review stills'
           git push origin HEAD:${{ github.ref_name }}
+
+  benchmark:
+    if: contains(github.event.head_commit.message, '[film-benchmark]')
+    name: Benchmark ${{ matrix.samples }} samples
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        samples: [4, 48]
+    defaults:
+      run:
+        working-directory: dollar-film-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: dollar-film-v2/package-lock.json
+      - run: npm ci --ignore-scripts
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: '1'
+      - name: Benchmark 30 frames
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: |
+          set +e
+          node render.mjs --video --from=10 --to=11 --fps=30 --n=${{ matrix.samples }} --out=out/benchmark.mp4 > /tmp/render.log 2>&1
+          result=$?
+          cat /tmp/render.log
+          grep -E 'Shader Error|\[pageerror\]|\[missing\]|\[page\] error' /tmp/render.log && result=1
+          grep -E 'GPU:|video ->' /tmp/render.log | while IFS= read -r line; do echo "::notice::$line"; done
+          if [ "$result" -ne 0 ]; then
+            while IFS= read -r line; do echo "::error::$line"; done < <(tail -20 /tmp/render.log)
+            exit "$result"
+          fi

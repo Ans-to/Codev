@@ -111,3 +111,103 @@ jobs:
             while IFS= read -r line; do echo "::error::$line"; done < <(tail -20 /tmp/render.log)
             exit "$result"
           fi
+
+  preview-segments:
+    if: contains(github.event.head_commit.message, '[film-preview]')
+    name: Preview segment ${{ matrix.segment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        segment: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    defaults:
+      run:
+        working-directory: dollar-film-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: dollar-film-v2/package-lock.json
+      - run: npm ci --ignore-scripts
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: '1'
+      - name: Install FFmpeg if needed
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+      - name: Render two-second preview segment
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          SEGMENT: ${{ matrix.segment }}
+        run: |
+          set +e
+          from=$((SEGMENT * 2))
+          to=$((from + 2))
+          printf -v name 'seg-%02d.mp4' "$SEGMENT"
+          node render.mjs --video --from="$from" --to="$to" --fps=30 --n=4 --out="out/$name" > /tmp/render.log 2>&1
+          result=$?
+          cat /tmp/render.log
+          grep -E 'Shader Error|\[pageerror\]|\[missing\]|\[page\] error' /tmp/render.log && result=1
+          grep -E 'GPU:|video ->' /tmp/render.log | while IFS= read -r line; do echo "::notice::$line"; done
+          if [ "$result" -ne 0 ]; then
+            while IFS= read -r line; do echo "::error::$line"; done < <(tail -15 /tmp/render.log)
+            exit "$result"
+          fi
+          frames=$(ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of default=nw=1:nk=1 "out/$name")
+          if [ "$frames" != 60 ]; then echo "::error::Expected 60 frames, got $frames"; exit 1; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preview-segment-${{ matrix.segment }}
+          path: dollar-film-v2/out/seg-*.mp4
+          if-no-files-found: error
+          retention-days: 2
+
+  preview-assemble:
+    if: contains(github.event.head_commit.message, '[film-preview]')
+    needs: preview-segments
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: dollar-film-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: preview-segment-*
+          path: dollar-film-v2/out/segments
+          merge-multiple: true
+      - name: Install FFmpeg if needed
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+      - name: Mix original soundtrack and assemble preview
+        run: |
+          python3 prepare_audio.py
+          test "$(find out/segments -name 'seg-*.mp4' | wc -l)" -eq 15
+          for f in out/segments/seg-*.mp4; do printf "file '%s/%s'\n" "$PWD" "$f"; done > out/concat.txt
+          mkdir -p ../.film-review
+          ffmpeg -y -v error -f concat -safe 0 -i out/concat.txt -i sound/mix.wav -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 256k -t 30 -movflags +faststart ../.film-review/preview.mp4
+          frames=$(ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of default=nw=1:nk=1 ../.film-review/preview.mp4)
+          if [ "$frames" != 900 ]; then echo "::error::Expected 900 frames, got $frames"; exit 1; fi
+          ffprobe -v error -show_entries format=duration:stream=codec_name,width,height,r_frame_rate,duration -of json ../.film-review/preview.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dollar-film-preview
+          path: .film-review/preview.mp4
+          if-no-files-found: error
+          retention-days: 7
+      - name: Publish preview on the same branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ../.film-review/preview.mp4
+          git diff --cached --quiet || git commit -m 'Add narrated film timing preview'
+          git push origin HEAD:${{ github.ref_name }}

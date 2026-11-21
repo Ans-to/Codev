@@ -90,6 +90,13 @@ jobs:
       - run: npm ci --ignore-scripts
         env:
           PUPPETEER_SKIP_DOWNLOAD: '1'
+      - name: Install FFmpeg if needed
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+          ffmpeg -version | head -1
       - name: Benchmark 30 frames
         env:
           CHROME_PATH: /usr/bin/google-chrome

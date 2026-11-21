@@ -4,7 +4,7 @@ on:
     branches:
       - 'arena/f1f081b8-codev'
 permissions:
-  contents: read
+  contents: write
 jobs:
   stills:
     if: contains(github.event.head_commit.message, '[film-stills]')
@@ -46,3 +46,22 @@ jobs:
           path: dollar-film-v2/stills/*.png
           if-no-files-found: error
           retention-days: 7
+
+  publish-stills:
+    if: contains(github.event.head_commit.message, '[film-stills]')
+    needs: stills
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dollar-still-*
+          path: .film-review
+          merge-multiple: true
+      - name: Publish review stills to the same branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .film-review
+          git diff --cached --quiet || git commit -m 'Add rendered film review stills'
+          git push origin HEAD:${{ github.ref_name }}

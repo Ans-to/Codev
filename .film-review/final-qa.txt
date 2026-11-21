@@ -1,0 +1,32 @@
+Final QA: 900 frames, 1920x1080, 30 fps, 30 seconds, H.264/AAC.
+[Parsed_psnr_0 @ 0x7570a4002200] PSNR r:39.583952 g:39.951699 b:38.513483 a:inf average:40.555321 min:40.555321 max:40.555321
+
+  Integrated loudness:
+    I:         -14.1 LUFS
+    Threshold: -24.9 LUFS
+
+  Loudness range:
+    LRA:         2.0 LU
+    Threshold: -34.8 LUFS
+    LRA low:   -15.8 LUFS
+    LRA high:  -13.8 LUFS
+
+  True peak:
+    Peak:       -1.4 dBFS
+[out#0/null @ 0x5a4987acc600] video:0KiB audio:5628KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+size=N/A time=00:00:30.01 bitrate=N/A speed= 376x elapsed=0:00:00.07    
+mix -> sound/mix.wav  (15 layers, 30.00 s)  -19.1 LUFS -> -14.1 LUFS (target -14), true peak -1.5 dBTP
+    0.00 s  voice
+    0.18 s  coin.wav
+    3.72 s  paper.wav
+    5.20 s  coin.wav
+    8.90 s  chime.wav
+    9.35 s  chime.wav
+    9.80 s  chime.wav
+   13.80 s  paper.wav
+   14.40 s  click.wav
+   15.10 s  click.wav
+   19.20 s  chime.wav
+   19.65 s  chime.wav
+   20.10 s  chime.wav
+   23.55 s  whoosh.wav

@@ -1,0 +1,11 @@
+name: Dollar film render
+on:
+  push:
+    branches:
+      - 'arena/f1f081b8-codev'
+jobs:
+  smoke:
+    if: contains(github.event.head_commit.message, '[film-smoke]')
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'GitHub Actions rendering environment is available.'
